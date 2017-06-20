@@ -1,0 +1,4 @@
+name: test
+properties:
+    a: key
+    b: test
