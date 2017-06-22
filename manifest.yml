@@ -1,4 +1,7 @@
-name: test
+name: new-name
 properties:
-    a: key
     b: test
+    array:
+    - b
+    - a
+    a: key

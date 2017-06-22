@@ -6,7 +6,7 @@ import (
 	"github.com/alex-slynko/manifest_splitter/types"
 )
 
-func SomeFunction(first, second map[string]interface{}) ([]types.Operation, error) {
+func ExtractOperations(first, second map[string]interface{}) ([]types.Operation, error) {
 	var operations []types.Operation
 
 	for k, v := range first {
@@ -60,7 +60,7 @@ func generateOperationForValues(key string, newValue, oldValue interface{}) ([]t
 					operations = append(operations, newOps...)
 				}
 			}
-			for k, _ := range oldMap {
+			for k := range oldMap {
 				_, ok := newMap[k]
 				if !ok {
 					op := types.Operation{
@@ -73,7 +73,20 @@ func generateOperationForValues(key string, newValue, oldValue interface{}) ([]t
 		} else {
 			return operations, fmt.Errorf("Can not replace %s. New value is not a map, but old value is (%#v and %#v)", key, newValue, oldValue)
 		}
+	} else if oldSlice, ok := oldValue.([]interface{}); ok {
+		if newSlice, ok := newValue.([]interface{}); ok {
+			for _, v := range newSlice {
+				if !contains(v, oldSlice) {
+					op := types.Operation{
+						Path:  key + "/-",
+						Type:  "replace",
+						Value: v,
+					}
+					operations = append(operations, op)
 
+				}
+			}
+		}
 	} else if newValue != oldValue {
 		if _, ok := newValue.(map[interface{}]interface{}); ok {
 			return operations, fmt.Errorf("Can not replace %s. New value is a map, but old value is not (%#v and %#v)", key, newValue, oldValue)
@@ -86,4 +99,13 @@ func generateOperationForValues(key string, newValue, oldValue interface{}) ([]t
 		operations = append(operations, op)
 	}
 	return operations, nil
+}
+
+func contains(value interface{}, slice []interface{}) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
