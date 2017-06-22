@@ -9,16 +9,16 @@ import (
 
 var _ = Describe("Maputil", func() {
 
-	var first, second map[string]interface{}
+	var newValue, oldValue map[string]interface{}
 	BeforeEach(func() {
-		first = map[string]interface{}{
+		newValue = map[string]interface{}{
 			"property": "value",
 		}
 	})
 
 	It("detect missing elements", func() {
-		second = map[string]interface{}{}
-		operations, err := maputil.ExtractOperations(first, second)
+		oldValue = map[string]interface{}{}
+		operations, err := maputil.ExtractOperations(newValue, oldValue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(operations).To(Equal([]types.Operation{
 			types.Operation{
@@ -29,11 +29,11 @@ var _ = Describe("Maputil", func() {
 		}))
 	})
 	It("detect extra elements", func() {
-		first = map[string]interface{}{}
-		second = map[string]interface{}{
+		newValue = map[string]interface{}{}
+		oldValue = map[string]interface{}{
 			"property": "value",
 		}
-		operations, err := maputil.ExtractOperations(first, second)
+		operations, err := maputil.ExtractOperations(newValue, oldValue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(operations).To(Equal([]types.Operation{
 			types.Operation{
@@ -44,10 +44,10 @@ var _ = Describe("Maputil", func() {
 	})
 
 	It("detect different elements", func() {
-		second = map[string]interface{}{
+		oldValue = map[string]interface{}{
 			"property": "wrongvalue",
 		}
-		operations, err := maputil.ExtractOperations(first, second)
+		operations, err := maputil.ExtractOperations(newValue, oldValue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(operations).To(Equal([]types.Operation{
 			types.Operation{
@@ -60,14 +60,14 @@ var _ = Describe("Maputil", func() {
 
 	Context("when new value is a map", func() {
 		BeforeEach(func() {
-			first = map[string]interface{}{
+			newValue = map[string]interface{}{
 				"property": map[interface{}]interface{}{},
 			}
 
 		})
 		Context("when old value is a map", func() {
 			BeforeEach(func() {
-				second = map[string]interface{}{
+				oldValue = map[string]interface{}{
 					"property": map[interface{}]interface{}{
 						"nested": "wrongvalue",
 					},
@@ -75,7 +75,7 @@ var _ = Describe("Maputil", func() {
 			})
 
 			It("detect extra elements", func() {
-				operations, err := maputil.ExtractOperations(first, second)
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(operations).To(Equal([]types.Operation{
 					types.Operation{
@@ -86,12 +86,12 @@ var _ = Describe("Maputil", func() {
 			})
 
 			It("detects different subelements", func() {
-				first = map[string]interface{}{
+				newValue = map[string]interface{}{
 					"property": map[interface{}]interface{}{
 						"nested": "value",
 					},
 				}
-				operations, err := maputil.ExtractOperations(first, second)
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(operations).To(Equal([]types.Operation{
 					types.Operation{
@@ -105,13 +105,13 @@ var _ = Describe("Maputil", func() {
 
 		Context("when old value is not a map", func() {
 			BeforeEach(func() {
-				second = map[string]interface{}{
+				oldValue = map[string]interface{}{
 					"property": "value",
 				}
 			})
 
 			It("it returns an error", func() {
-				_, err := maputil.ExtractOperations(first, second)
+				_, err := maputil.ExtractOperations(newValue, oldValue)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -120,7 +120,7 @@ var _ = Describe("Maputil", func() {
 
 	Context("when old value is a map", func() {
 		BeforeEach(func() {
-			second = map[string]interface{}{
+			oldValue = map[string]interface{}{
 				"property": map[interface{}]interface{}{
 					"nested": "wrongvalue",
 				},
@@ -129,7 +129,76 @@ var _ = Describe("Maputil", func() {
 
 		Context("when new value is not a map", func() {
 			It("it returns an error", func() {
-				_, err := maputil.ExtractOperations(first, second)
+				_, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+
+	Context("when new value is a slice", func() {
+		BeforeEach(func() {
+			newValue = map[string]interface{}{
+				"property": []interface{}{"value"},
+			}
+
+		})
+		Context("when old value is a slice", func() {
+			BeforeEach(func() {
+				oldValue = map[string]interface{}{
+					"property": []interface{}{
+						"originalvalue",
+					},
+				}
+			})
+
+			It("detect extra elements", func() {
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(operations).To(ContainElement(
+					types.Operation{
+						Path: "/property/0",
+						Type: "remove",
+					}))
+			})
+
+			It("detects missing subelements", func() {
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(operations).To(ContainElement(types.Operation{
+					Path:  "/property/-",
+					Type:  "replace",
+					Value: "value",
+				}))
+			})
+		})
+
+		Context("when old value is not a slice", func() {
+			BeforeEach(func() {
+				oldValue = map[string]interface{}{
+					"property": "value",
+				}
+			})
+
+			It("it returns an error", func() {
+				_, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+	})
+
+	Context("when old value is a slice", func() {
+		BeforeEach(func() {
+			oldValue = map[string]interface{}{
+				"property": []interface{}{
+					"wrongvalue",
+				},
+			}
+		})
+
+		Context("when new value is not a slice", func() {
+			It("it returns an error", func() {
+				_, err := maputil.ExtractOperations(newValue, oldValue)
 				Expect(err).To(HaveOccurred())
 			})
 		})
