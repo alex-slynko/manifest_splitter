@@ -204,4 +204,94 @@ var _ = Describe("Maputil", func() {
 		})
 	})
 
+	Context("when values are slices of maps", func() {
+		var (
+			nestedOldValue map[interface{}]interface{}
+			nestedNewValue map[interface{}]interface{}
+		)
+		BeforeEach(func() {
+			nestedOldValue = map[interface{}]interface{}{}
+			nestedNewValue = map[interface{}]interface{}{}
+		})
+		JustBeforeEach(func() {
+
+			newValue = map[string]interface{}{
+				"property": []interface{}{
+					nestedNewValue,
+				},
+			}
+			oldValue = map[string]interface{}{
+				"property": []interface{}{
+					nestedOldValue,
+				},
+			}
+		})
+
+		It("does not raise error", func() {
+			_, err := maputil.ExtractOperations(newValue, oldValue)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when old value is slice of simple values", func() {
+			XIt("returns error")
+		})
+
+		Context("when new value is slice of simple values", func() {
+			XIt("returns error")
+		})
+
+		Context("when new map contains extra elements", func() {
+			It("adds operation for new map", func() {
+				oldValue = map[string]interface{}{
+					"property": []interface{}{},
+				}
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(operations).To(HaveLen(1))
+				Expect(operations[0]).To(Equal(types.Operation{
+					Path:  "/property/-",
+					Type:  "replace",
+					Value: nestedNewValue,
+				}))
+
+			})
+		})
+
+		Context("when old map contains extra elements", func() {
+			It("adds operation to remove old map", func() {
+				newValue = map[string]interface{}{
+					"property": []interface{}{},
+				}
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(operations).To(HaveLen(1))
+				Expect(operations[0]).To(Equal(types.Operation{
+					Path: "/property/0",
+					Type: "remove",
+				}))
+
+			})
+		})
+
+		Context("when map contains name", func() {
+			BeforeEach(func() {
+				nestedNewValue["name"] = "Test"
+				nestedNewValue["value"] = "New"
+				nestedOldValue["name"] = "Test"
+				nestedOldValue["value"] = "Old"
+			})
+
+			It("compares map that has the same name", func() {
+				operations, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(operations).To(HaveLen(1))
+				Expect(operations[0]).To(Equal(types.Operation{
+					Path:  "/property/name=Test/value",
+					Type:  "replace",
+					Value: "New",
+				}))
+
+			})
+		})
+	})
 })

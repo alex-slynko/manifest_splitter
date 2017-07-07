@@ -78,7 +78,13 @@ func generateOperationForMaps(key string, oldMap map[interface{}]interface{}, ne
 func generateOperationForSlices(key string, oldSlice []interface{}, newValue interface{}) (operations []types.Operation, err error) {
 	if newSlice, ok := newValue.([]interface{}); ok {
 		for _, v := range newSlice {
-			if !contains(v, oldSlice) {
+			if mappedValue, converted := v.(map[interface{}]interface{}); converted {
+				ops, err := compareSubMap(key, mappedValue, oldSlice)
+				if err != nil {
+					return operations, err
+				}
+				operations = append(operations, ops...)
+			} else if !contains(v, oldSlice) {
 				op := types.Operation{
 					Path:  key + "/-",
 					Type:  "replace",
@@ -90,7 +96,17 @@ func generateOperationForSlices(key string, oldSlice []interface{}, newValue int
 		}
 
 		for i, v := range oldSlice {
-			if !contains(v, newSlice) {
+			if mappedValue, converted := v.(map[interface{}]interface{}); converted {
+				subMap, _ := findSubMap(mappedValue, newSlice)
+				if subMap == nil {
+					op := types.Operation{
+						Path:  fmt.Sprintf("%s/%d", key, i),
+						Type:  "remove",
+						Value: nil,
+					}
+					operations = append(operations, op)
+				}
+			} else if !contains(v, newSlice) {
 				op := types.Operation{
 					Path:  fmt.Sprintf("%s/%d", key, i),
 					Type:  "remove",
@@ -118,6 +134,7 @@ func generateOperationForValues(key string, newValue, oldValue interface{}) ([]t
 		ops, err := generateOperationForSlices(key, oldSlice, newValue)
 		if err != nil {
 			return operations, err
+
 		}
 		operations = append(operations, ops...)
 	} else if newValue != oldValue {
@@ -145,4 +162,35 @@ func contains(value interface{}, slice []interface{}) bool {
 		}
 	}
 	return false
+}
+
+func findSubMap(value map[interface{}]interface{}, slice []interface{}) (map[interface{}]interface{}, error) {
+	name := value["name"]
+	if name == nil {
+		return nil, nil
+	}
+	for _, v := range slice {
+		mappedValue := v.(map[interface{}]interface{})
+		if mappedValue["name"] == name {
+			return mappedValue, nil
+		}
+	}
+	return nil, nil
+}
+
+func compareSubMap(key string, value map[interface{}]interface{}, slice []interface{}) ([]types.Operation, error) {
+	oldValue, err := findSubMap(value, slice)
+	if err != nil {
+		return []types.Operation{}, err
+	}
+	if oldValue == nil {
+		return []types.Operation{
+			{
+				Path:  key + "/-",
+				Type:  "replace",
+				Value: value,
+			},
+		}, nil
+	}
+	return generateOperationForMaps(fmt.Sprintf("%s/name=%s", key, value["name"]), oldValue, value)
 }
