@@ -5,3 +5,7 @@ properties:
     - b
     - a
     a: key
+stemcells:
+- alias: default
+  os: ubuntu-xenial
+  version: ((stemcell-version))

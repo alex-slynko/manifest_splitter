@@ -2,6 +2,7 @@ package maputil
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/alex-slynko/manifest_splitter/types"
 )
@@ -97,7 +98,10 @@ func generateOperationForSlices(key string, oldSlice []interface{}, newValue int
 
 		for i, v := range oldSlice {
 			if mappedValue, converted := v.(map[interface{}]interface{}); converted {
-				subMap, _ := findSubMap(mappedValue, newSlice)
+				subMap, err := findSubMap(mappedValue, newSlice)
+				if err != nil {
+					return operations, err
+				}
 				if subMap == nil {
 					op := types.Operation{
 						Path:  fmt.Sprintf("%s/%d", key, i),
@@ -166,15 +170,28 @@ func contains(value interface{}, slice []interface{}) bool {
 
 func findSubMap(value map[interface{}]interface{}, slice []interface{}) (map[interface{}]interface{}, error) {
 	name := value["name"]
+
 	if name == nil {
+		for _, v := range slice {
+			mappedValue, ok := v.(map[interface{}]interface{})
+			if !ok {
+				return nil, fmt.Errorf("%#v is not a map", v)
+			}
+			if reflect.DeepEqual(value, mappedValue) {
+				return mappedValue, nil
+			}
+		}
 		return nil, nil
 	}
+
 	for _, v := range slice {
 		mappedValue := v.(map[interface{}]interface{})
+
 		if mappedValue["name"] == name {
 			return mappedValue, nil
 		}
 	}
+
 	return nil, nil
 }
 

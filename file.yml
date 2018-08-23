@@ -1,0 +1,4 @@
+something:
+- a: default
+  b: ubuntu-xenial
+  c: ((stemcell-version))

@@ -101,9 +101,10 @@ var _ = Describe("Maputil", func() {
 					},
 				}))
 			})
+
 		})
 
-		Context("when old value is not a map", func() {
+		Context("when old value is not a map of maps", func() {
 			BeforeEach(func() {
 				oldValue = map[string]interface{}{
 					"property": "value",
@@ -233,11 +234,23 @@ var _ = Describe("Maputil", func() {
 		})
 
 		Context("when old value is slice of simple values", func() {
-			XIt("returns error")
+			It("returns error", func() {
+				oldValue = map[string]interface{}{
+					"property": []interface{}{1, 2, 3},
+				}
+				_, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		Context("when new value is slice of simple values", func() {
-			XIt("returns error")
+			It("returns error", func() {
+				newValue = map[string]interface{}{
+					"property": []interface{}{1, 2, 3},
+				}
+				_, err := maputil.ExtractOperations(newValue, oldValue)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		Context("when new map contains extra elements", func() {

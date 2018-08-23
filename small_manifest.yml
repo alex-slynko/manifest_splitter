@@ -3,3 +3,7 @@ properties:
     b: test
     array:
     - b
+stemcells:
+- alias: default
+  os: ubuntu-xenial
+  version: ((stemcell-version))

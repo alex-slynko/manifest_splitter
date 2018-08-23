@@ -30,7 +30,7 @@ var _ = Describe("Main", func() {
 		command := exec.Command(pathToPackage, "manifest.yml", "small_manifest.yml")
 		session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(session).Should(gexec.Exit())
+		Eventually(session).Should(gexec.Exit(0))
 		output := string(session.Out.Contents())
 		Expect(output).To(ContainSubstring(`- type: replace
   path: /name
@@ -43,7 +43,7 @@ var _ = Describe("Main", func() {
 		command := exec.Command(pathToPackage, "manifest.yml", "small_manifest.yml")
 		session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(session).Should(gexec.Exit())
+		Eventually(session).Should(gexec.Exit(0))
 		output := session.Out.Contents()
 		ops := []types.Operation{}
 		yaml.Unmarshal(output, &ops)
@@ -59,4 +59,28 @@ var _ = Describe("Main", func() {
 		}))
 	})
 
+	It("outputs just the required operation-file", func() {
+		command := exec.Command(pathToPackage, "manifest.yml", "small_manifest.yml")
+		session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(session).Should(gexec.Exit(0))
+		output := session.Out.Contents()
+		ops := []types.Operation{}
+		yaml.Unmarshal(output, &ops)
+		Expect(ops).ToNot(ContainElement(types.Operation{
+			Type: "remove",
+			Path: "/stemcells/0",
+		}))
+	})
+
+	It("outputs nothing when manifest and operation-file are equivalent", func() {
+		command := exec.Command(pathToPackage, "file.yml", "equivalent_file.yml")
+		session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(session).Should(gexec.Exit(0))
+		output := session.Out.Contents()
+		ops := []types.Operation{}
+		yaml.Unmarshal(output, &ops)
+		Expect(ops).To(HaveLen(0))
+	})
 })
